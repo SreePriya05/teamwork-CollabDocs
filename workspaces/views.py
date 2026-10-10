@@ -71,7 +71,7 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
         except IntegrityError as exc:
             # Catch outside the atomic block so the failed transaction is rolled back.
             constraint = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None)
-            if constraint == "unique_workspace_member":
+            if constraint == "unique_workspace_member" or "workspaces_workspacemember" in str(exc):
                 raise DuplicateMembership() from exc
             raise
         return Response(

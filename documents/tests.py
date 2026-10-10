@@ -181,10 +181,17 @@ class DocumentAPITests(APITestCase):
         self.assertEqual([v["version_number"] for v in response.data], [1, 2, 3])
         self.assertEqual(set(response.data[0]["saved_by"]), {"id", "first_name", "last_name", "email"})
 
-    def test_dependencies_are_reported_explicitly(self):
-        self.assertEqual(self.client.get(self.stats_url).status_code, 503)
-        self.assertEqual(self.client.post(self.tags_url, {"tags": []}, format="json").status_code, 503)
-        self.assertEqual(self.client.get(self.list_url, {"tag": "important"}).status_code, 503)
+    def test_comments_and_tags_are_integrated(self):
+        response = self.client.get(self.stats_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data,
+            {"version_count": 1, "contributor_count": 1, "comment_count": 0},
+        )
+        self.assertEqual(self.client.post(self.tags_url, {"tags": []}, format="json").status_code, 400)
+        response = self.client.get(self.list_url, {"tag": "important"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, [])
 
     def test_only_requested_methods_are_exposed(self):
         self.assertEqual(self.client.get(self.detail_url).status_code, 405)
@@ -254,45 +261,22 @@ class DocumentIntegrationTests(APITransactionTestCase):
             with connection.schema_editor() as editor:
                 editor.delete_model(IntegrationComment)
 
-    @isolate_apps()
     def test_tag_assignment_and_filter_with_integrated_relationship(self):
-        class IntegrationTag(models.Model):
-            id = models.UUIDField(primary_key=True, default=uuid.uuid4)
-            name = models.CharField(max_length=255)
+        from comments.models import Tag
 
-            class Meta:
-                app_label = "documents"
-
-        # Share the registry temporarily so Django can resolve both M2M directions.
-        IntegrationTag._meta.apps = Document._meta.apps
-        Document._meta.apps.register_model("documents", IntegrationTag)
-        field = models.ManyToManyField(IntegrationTag, related_name="+")
-        field.contribute_to_class(Document, "tags")
-        through = field.remote_field.through
-        with connection.schema_editor() as editor:
-            editor.create_model(IntegrationTag)
-            editor.create_model(through)
-        try:
-            tags = [IntegrationTag.objects.create(name=name) for name in ("important", "review")]
-            url = reverse("documents:document-tags", args=[self.document.pk])
-            for ids in ([str(tag.pk) for tag in tags], [str(tags[0].pk)]):
-                response = self.client.post(url, {"tags": ids}, format="json")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(set(response.data["tags"]), {tag.pk for tag in tags})
-            self.assertEqual(self.document.tags.count(), 2)
-            self.assertEqual(self.document.versions.count(), 1)
-            for data in ({"tags": []}, {"tags": [str(uuid.uuid4())]}, {"tags": ["bad"]}, {"tags": "invalid"}):
-                self.assertEqual(self.client.post(url, data, format="json").status_code, 400)
-            response = self.client.get(reverse("documents:document-list"), {"tag": "important"})
+        tags = [Tag.objects.create(name=name) for name in ("important", "review")]
+        url = reverse("documents:document-tags", args=[self.document.pk])
+        for ids in ([str(tag.pk) for tag in tags], [str(tags[0].pk)]):
+            response = self.client.post(url, {"tags": ids}, format="json")
             self.assertEqual(response.status_code, 200)
-            self.assertEqual([item["id"] for item in response.data], [str(self.document.pk)])
-        finally:
-            with connection.schema_editor() as editor:
-                editor.delete_model(through)
-                editor.delete_model(IntegrationTag)
-            Document._meta.local_many_to_many.remove(field)
-            Document._meta._expire_cache()
-            delattr(Document, "tags")
-            Document._meta.apps.all_models["documents"].pop(through._meta.model_name, None)
-            Document._meta.apps.all_models["documents"].pop(IntegrationTag._meta.model_name, None)
-            Document._meta.apps.clear_cache()
+            self.assertEqual(set(response.data["tags"]), {tag.pk for tag in tags})
+        self.assertEqual(self.document.tags.count(), 2)
+        self.assertEqual(self.document.versions.count(), 1)
+        for data in ({"tags": []}, {"tags": [str(uuid.uuid4())]}, {"tags": "invalid"}):
+            self.assertEqual(self.client.post(url, data, format="json").status_code, 400)
+        named = self.client.post(url, {"tags": ["release"]}, format="json")
+        self.assertEqual(named.status_code, 200)
+        self.assertIn("release", named.data["tag_names"])
+        response = self.client.get(reverse("documents:document-list"), {"tag": "important"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.data], [str(self.document.pk)])

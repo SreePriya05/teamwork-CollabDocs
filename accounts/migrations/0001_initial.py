@@ -45,6 +45,7 @@ class Migration(migrations.Migration):
                 ("email", models.CharField(max_length=254, unique=True)),
                 ("phone", models.CharField(max_length=15, unique=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
                 ("is_staff", models.BooleanField(default=False)),
                 ("is_active", models.BooleanField(default=True)),
                 (

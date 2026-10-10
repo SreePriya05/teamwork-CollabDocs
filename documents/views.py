@@ -9,10 +9,14 @@ from rest_framework.exceptions import APIException
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from comments.serializers import TagSerializer
 from workspaces.models import WorkspaceMember
+
 from .models import Document, DocumentVersion
 from .serializers import (
-    DocumentSerializer, DocumentVersionSerializer, TagAssignmentSerializer,
+    DocumentSerializer,
+    DocumentTagAttachSerializer,
+    DocumentVersionSerializer,
     require_document_editor,
 )
 
@@ -26,6 +30,13 @@ class VersionConflict(APIException):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "A conflicting document version exists."
     default_code = "version_conflict"
+
+
+def _is_constraint(exc, name, table):
+    constraint = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None)
+    if constraint == name:
+        return True
+    return table in str(exc)
 
 
 def tag_relationship():
@@ -81,8 +92,10 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def save_version(self, document):
         version_number = document.versions.count() + 1
         DocumentVersion.objects.create(
-            document=document, content=document.content,
-            version_number=version_number, saved_by=self.request.user,
+            document=document,
+            content=document.content,
+            version_number=version_number,
+            saved_by=self.request.user,
         )
         document.version_count = version_number
 
@@ -106,8 +119,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 self.save_version(document)
                 data = serializer.data
         except IntegrityError as exc:
-            constraint = getattr(getattr(exc.__cause__, "diag", None), "constraint_name", None)
-            if constraint == "unique_document_version":
+            if _is_constraint(exc, "unique_document_version", "documents_documentversion"):
                 raise VersionConflict() from exc
             raise
         return Response(data)
@@ -137,14 +149,24 @@ class DocumentViewSet(viewsets.ModelViewSet):
         )
         return Response({**version_stats, **comment_stats})
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["get", "post"])
     def tags(self, request, pk=None):
         document = self.get_object()
+        tag_relationship()
+        if request.method == "GET":
+            tags = document.tags.annotate(document_count=Count("documents"))
+            return Response(TagSerializer(tags, many=True).data)
+
         require_document_editor(request.user, document.workspace)
-        field = tag_relationship()
-        serializer = TagAssignmentSerializer(data=request.data, tag_model=field.related_model)
+        serializer = DocumentTagAttachSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             Document.objects.select_for_update().get(pk=document.pk)
-            document.tags.add(*serializer.validated_data["tags"])
-        return Response({"tags": list(document.tags.values_list("pk", flat=True))})
+            document.tags.add(*serializer.validated_data["resolved_tags"])
+        rows = list(document.tags.values_list("pk", "name"))
+        return Response(
+            {
+                "tags": [tag_id for tag_id, _name in rows],
+                "tag_names": [name for _tag_id, name in rows],
+            }
+        )

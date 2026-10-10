@@ -41,6 +41,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.CharField(max_length=254, unique=True)
     phone = models.CharField(max_length=15, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
@@ -53,5 +54,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         ordering = ["email"]
 
+    def save(self, *args, **kwargs):
+        if not self.password:
+            self.set_unusable_password()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.email
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()

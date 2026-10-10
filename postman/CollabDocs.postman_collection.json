@@ -1,0 +1,487 @@
+{
+  "info": {
+    "name": "CollabDocs API",
+    "description": "CollabDocs API collection. Create the Basic auth user from the README Startup section before running Workspaces or Documents. Run requests from top to bottom so later requests receive saved ids.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "email", "value": "ada@example.com"},
+    {"key": "password", "value": "test-password"},
+    {"key": "memberUserId", "value": ""},
+    {"key": "workspaceId", "value": ""},
+    {"key": "documentId", "value": ""},
+    {"key": "commentId", "value": ""},
+    {"key": "tagId", "value": ""},
+    {"key": "auditLogId", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health/",
+            "description": "Returns {\"status\": \"ok\"}."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "Register user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('memberUserId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Grace\",\n  \"last_name\": \"Hopper\",\n  \"email\": \"Grace@Example.com\",\n  \"phone\": \"1234567890\"\n}"
+            },
+            "url": "{{baseUrl}}/api/accounts/users/",
+            "description": "Registers a user. Email is stored lowercase. This call does not set a password."
+          },
+          "response": []
+        },
+        {
+          "name": "List users",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/accounts/users/",
+            "description": "Lists users."
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve user",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/accounts/users/{{memberUserId}}/",
+            "description": "Retrieves one user, including comment_count."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {"key": "username", "value": "{{email}}", "type": "string"},
+          {"key": "password", "value": "{{password}}", "type": "string"}
+        ]
+      },
+      "item": [
+        {
+          "name": "Create workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('workspaceId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Research\"\n}"
+            },
+            "url": "{{baseUrl}}/api/workspaces/",
+            "description": "Creates a workspace. The signed-in user becomes owner and admin."
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve workspace",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/",
+            "description": "Returns the workspace for a member. Non-members receive 404."
+          },
+          "response": []
+        },
+        {
+          "name": "List members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/",
+            "description": "Lists workspace members."
+          },
+          "response": []
+        },
+        {
+          "name": "Add member",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user\": \"{{memberUserId}}\",\n  \"role\": \"viewer\"\n}"
+            },
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/members/",
+            "description": "Adds a member. role is admin, editor, or viewer. Only an admin can call this. A duplicate membership returns 409."
+          },
+          "response": []
+        },
+        {
+          "name": "Workspace summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/summary/",
+            "description": "Returns document_count, member_count, and total_comments."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {"key": "username", "value": "{{email}}", "type": "string"},
+          {"key": "password", "value": "{{password}}", "type": "string"}
+        ]
+      },
+      "item": [
+        {
+          "name": "Create document",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('documentId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Notes\",\n  \"content\": \"First draft\",\n  \"workspace\": \"{{workspaceId}}\",\n  \"status\": \"draft\"\n}"
+            },
+            "url": "{{baseUrl}}/api/documents/",
+            "description": "Creates a document and version 1. status is draft, published, or archived. Viewers receive 403."
+          },
+          "response": []
+        },
+        {
+          "name": "List documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/?workspace={{workspaceId}}&status=draft&search=note",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", ""],
+              "query": [
+                {"key": "workspace", "value": "{{workspaceId}}"},
+                {"key": "status", "value": "draft"},
+                {"key": "search", "value": "note"}
+              ]
+            },
+            "description": "Lists documents visible to the caller. Filters: workspace, status (repeatable), search (title), tag."
+          },
+          "response": []
+        },
+        {
+          "name": "Update document",
+          "request": {
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Notes\",\n  \"content\": \"Second draft\",\n  \"workspace\": \"{{workspaceId}}\",\n  \"status\": \"published\"\n}"
+            },
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/",
+            "description": "Replaces the document and stores the next version. The workspace cannot change."
+          },
+          "response": []
+        },
+        {
+          "name": "List versions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/versions/",
+            "description": "Returns versions ordered by version_number."
+          },
+          "response": []
+        },
+        {
+          "name": "Document stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/stats/",
+            "description": "Returns version_count, contributor_count, and comment_count."
+          },
+          "response": []
+        },
+        {
+          "name": "Attach tags",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tags\": [\"python\", \"django\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/tags/",
+            "description": "Attaches tags by name. Names that are not UUIDs are created. Response includes tags and tag_names."
+          },
+          "response": []
+        },
+        {
+          "name": "List document tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/tags/",
+            "description": "Lists tags attached to the document. Viewers can read this."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Comments and tags",
+      "item": [
+        {
+          "name": "Create tag",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('tagId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \" Release \"\n}"
+            },
+            "url": "{{baseUrl}}/api/comments/tags/",
+            "description": "Creates a tag. The name is trimmed and lowercased. A duplicate returns 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Attach saved tag to document",
+          "request": {
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {"key": "username", "value": "{{email}}", "type": "string"},
+                {"key": "password", "value": "{{password}}", "type": "string"}
+              ]
+            },
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tags\": [\"roadmap\"],\n  \"tag_ids\": [\"{{tagId}}\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/documents/{{documentId}}/tags/",
+            "description": "Attaches the tag created above, plus a new name. Requires the document id from the Documents folder and Basic auth."
+          },
+          "response": []
+        },
+        {
+          "name": "Search tags",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/tags/?search=rel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "tags", ""],
+              "query": [{"key": "search", "value": "rel"}]
+            },
+            "description": "Lists tags whose name contains the search text."
+          },
+          "response": []
+        },
+        {
+          "name": "Create comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('commentId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document\": \"{{documentId}}\",\n  \"author\": \"{{memberUserId}}\",\n  \"content\": \"Looks good\"\n}"
+            },
+            "url": "{{baseUrl}}/api/comments/comments/",
+            "description": "Creates a top-level comment. Blank content returns 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Reply to comment",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document\": \"{{documentId}}\",\n  \"author\": \"{{memberUserId}}\",\n  \"content\": \"A reply\",\n  \"parent\": \"{{commentId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/comments/comments/",
+            "description": "Creates a reply. The parent must belong to the same document."
+          },
+          "response": []
+        },
+        {
+          "name": "List comments",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/comments/comments/?document={{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "comments", "comments", ""],
+              "query": [{"key": "document", "value": "{{documentId}}"}]
+            },
+            "description": "Lists top-level comments for a document, with reply_count and replies."
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve comment",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/comments/comments/{{commentId}}/",
+            "description": "Retrieves one comment."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Audit logs",
+      "item": [
+        {
+          "name": "List audit logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (pm.response.code === 200 && body.length) {",
+                  "    pm.collectionVariables.set('auditLogId', body[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auditlogs/audit-logs/?model_name=Document",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auditlogs", "audit-logs", ""],
+              "query": [{"key": "model_name", "value": "Document"}]
+            },
+            "description": "Lists audit logs. Filters: model_name, actor or actor_id, start or start_date, end or end_date."
+          },
+          "response": []
+        },
+        {
+          "name": "Retrieve audit log",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auditlogs/audit-logs/{{auditLogId}}/",
+            "description": "Retrieves one audit log."
+          },
+          "response": []
+        },
+        {
+          "name": "Audit summary",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auditlogs/audit-logs/summary/",
+            "description": "Returns total, created_count, and updated_count."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

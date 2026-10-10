@@ -9,5 +9,9 @@ urlpatterns = [
     path("<uuid:pk>/", DocumentViewSet.as_view({"put": "update"}), name="document-detail"),
     path("<uuid:pk>/versions/", DocumentViewSet.as_view({"get": "versions"}), name="document-versions"),
     path("<uuid:pk>/stats/", DocumentViewSet.as_view({"get": "stats"}), name="document-stats"),
-    path("<uuid:pk>/tags/", DocumentViewSet.as_view({"post": "tags"}), name="document-tags"),
+    path(
+        "<uuid:pk>/tags/",
+        DocumentViewSet.as_view({"get": "tags", "post": "tags"}),
+        name="document-tags",
+    ),
 ]

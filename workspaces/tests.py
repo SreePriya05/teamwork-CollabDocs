@@ -140,11 +140,13 @@ class WorkspaceAPITests(APITestCase):
         for url in (self.detail_url, self.members_url, self.summary_url):
             self.assertEqual(self.client.get(url).status_code, 403)
 
-    def test_summary_reports_missing_dependencies(self):
+    def test_summary_counts_integrated_documents_and_comments(self):
         response = self.client.get(self.summary_url)
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.data["missing_models"], ["comments.Comment"])
-        self.assertNotIn("total_comments", response.data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data,
+            {"document_count": 0, "member_count": 3, "total_comments": 0},
+        )
 
     def test_unrequested_crud_methods_are_not_exposed(self):
         self.assertEqual(self.client.get(reverse("workspaces:workspace-create")).status_code, 405)
