@@ -70,6 +70,6 @@ GET /api/health/
 ## Development Notes
 
 - PostgreSQL is required; SQLite is not configured.
-- The default Django `User` model is preserved for now. Do not add a duplicate user model without coordinating the authentication design first.
+- Authentication uses the shared custom `accounts.User` model configured by `AUTH_USER_MODEL`.
 - Application models should inherit from `common.models.UUIDPrimaryKeyModel` or define an equivalent UUID primary key when implemented.
 - Keep business logic inside the owning app to reduce merge conflicts between developers.

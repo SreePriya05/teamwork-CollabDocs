@@ -1,10 +1,17 @@
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 
 from .views import DocumentViewSet
 
 app_name = "documents"
 
-router = DefaultRouter()
-router.register("documents", DocumentViewSet, basename="document")
-
-urlpatterns = router.urls
+urlpatterns = [
+    path("", DocumentViewSet.as_view({"get": "list", "post": "create"}), name="document-list"),
+    path("<uuid:pk>/", DocumentViewSet.as_view({"put": "update"}), name="document-detail"),
+    path("<uuid:pk>/versions/", DocumentViewSet.as_view({"get": "versions"}), name="document-versions"),
+    path("<uuid:pk>/stats/", DocumentViewSet.as_view({"get": "stats"}), name="document-stats"),
+    path(
+        "<uuid:pk>/tags/",
+        DocumentViewSet.as_view({"get": "tags", "post": "tags"}),
+        name="document-tags",
+    ),
+]

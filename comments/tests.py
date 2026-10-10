@@ -4,7 +4,7 @@ from rest_framework.test import APITestCase
 
 from accounts.models import User
 from documents.models import Document
-from workspaces.models import Workspace
+from workspaces.models import Workspace, WorkspaceMember
 
 from .models import Comment, Tag
 
@@ -18,6 +18,10 @@ class CommentAndTagTests(APITestCase):
             phone="9876543210",
         )
         self.workspace = Workspace.objects.create(name="Research", owner=self.author)
+        WorkspaceMember.objects.create(
+            workspace=self.workspace, user=self.author, role="editor"
+        )
+        self.client.force_authenticate(self.author)
         self.document = Document.objects.create(
             title="Notes",
             content="First draft",
